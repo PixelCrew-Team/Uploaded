@@ -1,4 +1,4 @@
-/* YOTSUBA UPLOADED - SERVER ENGINE */
+/* YOTSUBA UPLOADED - ENGINE */
 import 'dotenv/config';
 import Fastify from 'fastify';
 import multipart from '@fastify/multipart';
@@ -11,7 +11,7 @@ import pg from 'pg';
 const fastify = Fastify({ logger: false });
 const { Pool } = pg;
 
-// Conexión segura mediante variables de entorno
+// Conexión a la DB usando variables de entorno
 const pool = new Pool({
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
@@ -20,36 +20,35 @@ const pool = new Pool({
     port: process.env.DB_PORT,
 });
 
-// Configuración de límites y archivos
+// Configuración de subida (Límite 100MB)
 fastify.register(multipart, { 
-    limits: { fileSize: 100 * 1024 * 1024 } // 100MB Máximo
+    limits: { fileSize: 100 * 1024 * 1024 } 
 });
 
-// Servir el Frontend
+// Servir Frontend
 fastify.register(staticFiles, {
     root: path.join(process.cwd(), 'public'),
     prefix: '/',
 });
 
-// Servir los archivos subidos (Ruta: /u/ID)
+// Servir Archivos Subidos
 fastify.register(staticFiles, {
     root: path.join(process.cwd(), 'uploads'),
     prefix: '/u/',
     decorateReply: false
 });
 
-// Lógica de Subida
+// Ruta de Subida
 fastify.post('/upload', async (req, reply) => {
     try {
         const data = await req.file();
-        if (!data) return reply.code(400).send({ error: 'No se subió ningún archivo' });
+        if (!data) return reply.code(400).send({ error: 'No hay archivo' });
 
-        const id = nanoid(8); // Genera el ID de 8 dígitos
+        const id = nanoid(8); 
         const ext = path.extname(data.filename);
         const fileName = `${id}${ext}`;
         const uploadPath = path.join(process.cwd(), 'uploads', fileName);
 
-        // Guardar archivo en el VPS
         const fileStream = fs.createWriteStream(uploadPath);
         await new Promise((resolve, reject) => {
             data.file.pipe(fileStream);
@@ -57,7 +56,6 @@ fastify.post('/upload', async (req, reply) => {
             fileStream.on('error', reject);
         });
 
-        // Registrar en PostgreSQL
         await pool.query(
             'INSERT INTO files (id, original_name, filename) VALUES ($1, $2, $3)', 
             [id, data.filename, fileName]
@@ -69,7 +67,6 @@ fastify.post('/upload', async (req, reply) => {
     }
 });
 
-// Iniciar Servidor y crear tabla si no existe
 const start = async () => {
     try {
         if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
@@ -82,9 +79,8 @@ const start = async () => {
             );
         `);
         await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
-        console.log(`🚀 Yotsuba Uploaded corriendo en el puerto ${process.env.PORT || 3000}`);
+        console.log(`🚀 Yotsuba Uploaded activo en puerto ${process.env.PORT || 3000}`);
     } catch (err) {
-        console.error(err);
         process.exit(1);
     }
 };
