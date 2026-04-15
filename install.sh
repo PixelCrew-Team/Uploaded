@@ -1,29 +1,38 @@
 #!/bin/bash
 
-echo "🚀 Iniciando instalación de Yotsuba Uploaded..."
+echo "🚀 Configuración de Yotsuba Uploaded..."
 
-# 1. Actualizar sistema e instalar dependencias
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y nodejs npm postgresql postgresql-contrib nginx certbot python3-certbot-nginx
+# Datos del Usuario
+read -p "🔹 Dominio (ej: upload.yotsuba.giize.com): " DOMAIN
+read -p "🔹 Email para SSL: " EMAIL
+read -p "🔹 Usuario DB: " DB_USER
+read -p "🔹 Clave DB: " DB_PASS
+read -p "🔹 Nombre DB: " DB_NAME
 
-# 2. Configurar PostgreSQL
-sudo -u postgres psql -c "CREATE DATABASE yotsuba_db;"
-sudo -u postgres psql -c "CREATE USER yotsuba_user WITH PASSWORD 'yotsuba_pass';"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE yotsuba_db TO yotsuba_user;"
+# Instalación de Sistema
+sudo apt update && sudo apt install -y nodejs npm postgresql postgresql-contrib nginx certbot python3-certbot-nginx
 
-# 3. Preparar carpetas y dependencias
-mkdir -p uploads
-npm install fastify @fastify/multipart @fastify/static nanoid pg
+# Configuración PostgreSQL
+sudo -u postgres psql -c "CREATE DATABASE $DB_NAME;"
+sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASS';"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
 
-# 4. Configurar Nginx (Básico)
-echo "Introduce tu dominio (ej: upload.tudominio.com):"
-read DOMAIN
+# Crear .env
+cat <<EOF > .env
+DB_USER=$DB_USER
+DB_HOST=localhost
+DB_NAME=$DB_NAME
+DB_PASS=$DB_PASS
+DB_PORT=5432
+PORT=3000
+EOF
 
+# Node e Nginx
+npm install
 cat <<EOF > /etc/nginx/sites-available/yotsuba
 server {
     listen 80;
     server_name $DOMAIN;
-
     location / {
         proxy_pass http://localhost:3000;
         proxy_set_header Host \$host;
@@ -31,11 +40,10 @@ server {
     }
 }
 EOF
-
 ln -s /etc/nginx/sites-available/yotsuba /etc/nginx/sites-enabled/
-nginx -t && systemctl restart nginx
+systemctl restart nginx
 
-# 5. SSL
-certbot --nginx -d $DOMAIN
+# SSL Automático
+certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL
 
-echo "✅ Instalación completada. Usa 'node server.js' para iniciar."
+echo "✅ Listo. Ejecuta pm2 start server.js"
