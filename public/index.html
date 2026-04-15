@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yotsuba Uploaded</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0a0a0a; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .neon-text { color: #39ff14; text-shadow: 0 0 10px #39ff14, 0 0 20px #39ff14; }
+        .drop-zone { border: 2px dashed #39ff14; transition: all 0.3s ease; }
+        .drop-zone:hover { background: rgba(57, 255, 20, 0.1); }
+        .input-glow { background: #1a1a1a; border: 1px solid #333; }
+        .input-glow:focus { border-color: #39ff14; outline: none; box-shadow: 0 0 5px #39ff14; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen items-center justify-center p-4">
+
+    <h1 class="text-4xl font-bold neon-text mb-2">Yotsuba Uploaded</h1>
+    <p class="text-gray-400 mb-8 text-sm">Convierte imágenes, apks y otros archivos en enlaces.</p>
+
+    <div id="dropZone" class="drop-zone w-full max-w-md p-10 rounded-xl cursor-pointer text-center mb-6">
+        <p id="statusText">Arrastra o sube tus archivos aquí</p>
+        <input type="file" id="fileInput" class="hidden">
+    </div>
+
+    <div class="w-full max-w-md">
+        <label class="block text-xs text-gray-500 mb-1 ml-1">Aquí aparecerá tu enlace</"label>
+        <div class="flex gap-2">
+            <input type="text" id="resultLink" readonly class="input-glow w-full p-3 rounded-lg text-sm text-gray-300" placeholder="Esperando archivo...">
+            <button onclick="copyLink()" class="bg-[#39ff14] text-black font-bold px-4 rounded-lg hover:bg-green-400 transition">Copiar</button>
+        </div>
+    </div>
+
+    <footer class="mt-auto py-6 text-gray-600 text-[10px] text-center">
+        Copyright © 2026 Yotsuha Upload. All right reserved.<br>
+        Powered by PixelCrew-Team.
+    </footer>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const resultLink = document.getElementById('resultLink');
+        const statusText = document.getElementById('statusText');
+
+        dropZone.onclick = () => fileInput.click();
+
+        fileInput.onchange = e => uploadFile(e.target.files[0]);
+
+        async function uploadFile(file) {
+            if (!file) return;
+            statusText.innerText = "Subiendo...";
+            
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (data.url) {
+                    const fullUrl = window.location.origin + data.url;
+                    resultLink.value = fullUrl;
+                    statusText.innerText = "¡Subida completada!";
+                }
+            } catch (err) {
+                statusText.innerText = "Error al subir";
+            }
+        }
+
+        function copyLink() {
+            resultLink.select();
+            document.execCommand('copy');
+            alert('Enlace copiado al portapapeles');
+        }
+    </script>
+</body>
+</html>
