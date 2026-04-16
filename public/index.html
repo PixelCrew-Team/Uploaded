@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yotsuba Uploaded</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.google.com/recaptcha/api.js?render=6Lcgg7osAAAAAJkbj41nuqiUoc3h_fA9wZL_IDvm"></script>
     <style>
         body { background-color: #0a0a0a; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .neon-text { color: #39ff14; text-shadow: 0 0 10px #39ff14, 0 0 20px #39ff14; }
@@ -25,7 +26,7 @@
     </div>
 
     <div class="w-full max-w-md">
-        <label class="block text-xs text-gray-500 mb-1 ml-1">Aquí aparecerá tu enlace</"label>
+        <label class="block text-xs text-gray-500 mb-1 ml-1">Aquí aparecerá tu enlace</label>
         <div class="flex gap-2">
             <input type="text" id="resultLink" readonly class="input-glow w-full p-3 rounded-lg text-sm text-gray-300" placeholder="Esperando archivo...">
             <button onclick="copyLink()" class="bg-[#39ff14] text-black font-bold px-4 rounded-lg hover:bg-green-400 transition">Copiar</button>
@@ -33,7 +34,7 @@
     </div>
 
     <footer class="mt-auto py-6 text-gray-600 text-[10px] text-center">
-        Copyright © 2026 Yotsuha Upload. All right reserved.<br>
+        Copyright © 2026 Yotsuba Upload. All right reserved.<br>
         Powered by PixelCrew-Team.
     </footer>
 
@@ -49,22 +50,34 @@
 
         async function uploadFile(file) {
             if (!file) return;
-            statusText.innerText = "Subiendo...";
-            
-            const formData = new FormData();
-            formData.append('file', file);
+            statusText.innerText = "Verificando seguridad...";
 
-            try {
-                const res = await fetch('/upload', { method: 'POST', body: formData });
-                const data = await res.json();
-                if (data.url) {
-                    const fullUrl = window.location.origin + data.url;
-                    resultLink.value = fullUrl;
-                    statusText.innerText = "¡Subida completada!";
-                }
-            } catch (err) {
-                statusText.innerText = "Error al subir";
-            }
+            // 2. Ejecutar reCAPTCHA para obtener el token
+            grecaptcha.ready(function() {
+                grecaptcha.execute('6Lcgg7osAAAAAJkbj41nuqiUoc3h_fA9wZL_IDvm', {action: 'upload'}).then(async function(token) {
+                    
+                    statusText.innerText = "Subiendo...";
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    // 3. Enviar el token al servidor para validación
+                    formData.append('recaptcha_token', token);
+
+                    try {
+                        const res = await fetch('/upload', { method: 'POST', body: formData });
+                        const data = await res.json();
+                        if (data.url) {
+                            const fullUrl = window.location.origin + data.url;
+                            resultLink.value = fullUrl;
+                            statusText.innerText = "¡Subida completada!";
+                        } else {
+                            statusText.innerText = "Error en validación";
+                        }
+                    } catch (err) {
+                        statusText.innerText = "Error al subir";
+                    }
+                });
+            });
         }
 
         function copyLink() {
