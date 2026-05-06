@@ -7,35 +7,65 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.google.com/recaptcha/api.js?render=6Lcgg7osAAAAAJkbj41nuqiUoc3h_fA9wZL_IDvm"></script>
     <style>
-        body { background-color: #0a0a0a; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .neon-text { color: #39ff14; text-shadow: 0 0 10px #39ff14, 0 0 20px #39ff14; }
-        .drop-zone { border: 2px dashed #39ff14; transition: all 0.3s ease; }
-        .drop-zone:hover { background: rgba(57, 255, 20, 0.1); }
-        .input-glow { background: #1a1a1a; border: 1px solid #333; }
-        .input-glow:focus { border-color: #39ff14; outline: none; box-shadow: 0 0 5px #39ff14; }
+        body { background-color: #0d0d0d; color: #e0e0e0; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .neon-text { color: #39ff14; text-shadow: 0 0 10px rgba(57, 255, 20, 0.5); }
+        .drop-zone { border: 2px dashed #222; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #111; }
+        .drop-zone.active { border-color: #39ff14; background: rgba(57, 255, 20, 0.05); transform: scale(1.01); }
+        .progress-bar { height: 4px; background: #39ff14; width: 0%; transition: width 0.2s; box-shadow: 0 0 15px #39ff14; }
+        .input-glow { background: #161616; border: 1px solid #222; transition: 0.3s; }
+        .input-glow:focus { border-color: #39ff14; outline: none; box-shadow: 0 0 10px rgba(57, 255, 20, 0.2); }
     </style>
 </head>
-<body class="flex flex-col min-h-screen items-center justify-center p-4">
+<body class="flex flex-col min-h-screen items-center justify-center p-6">
 
-    <h1 class="text-4xl font-bold neon-text mb-2">Yotsuba Uploaded</h1>
-    <p class="text-gray-400 mb-8 text-sm">Convierte imágenes, apks y otros archivos en enlaces.</p>
+    <div class="w-full max-w-lg">
+        <header class="text-center mb-10">
+            <h1 class="text-5xl font-black neon-text tracking-tighter mb-2 italic">YOTSUBA</h1>
+            <p class="text-gray-500 text-[10px] uppercase tracking-[0.3em] font-bold">Cloud Engine & File Hosting</p>
+        </header>
 
-    <div id="dropZone" class="drop-zone w-full max-w-md p-10 rounded-xl cursor-pointer text-center mb-6">
-        <p id="statusText">Arrastra o sube tus archivos aquí</p>
-        <input type="file" id="fileInput" class="hidden">
-    </div>
+        <div id="dropZone" class="drop-zone rounded-2xl p-12 text-center cursor-pointer mb-8 group relative overflow-hidden">
+            <div class="relative z-10">
+                <div class="mb-4 flex justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-14 w-14 text-zinc-700 group-hover:text-[#39ff14] transition-colors duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                </div>
+                <p id="statusText" class="text-gray-400 font-medium group-hover:text-gray-200 transition">Arrastra archivos APK, MP4 o MP3</p>
+                <p class="text-zinc-600 text-[10px] mt-2 uppercase tracking-widest font-bold">Máximo 200MB</p>
+            </div>
+            <input type="file" id="fileInput" class="hidden" accept=".apk,.mp3,.mp4,.png,.jpg,.jpeg,.gif">
+        </div>
 
-    <div class="w-full max-w-md">
-        <label class="block text-xs text-gray-500 mb-1 ml-1">Aquí aparecerá tu enlace</label>
-        <div class="flex gap-2">
-            <input type="text" id="resultLink" readonly class="input-glow w-full p-3 rounded-lg text-sm text-gray-300" placeholder="Esperando archivo...">
-            <button onclick="copyLink()" class="bg-[#39ff14] text-black font-bold px-4 rounded-lg hover:bg-green-400 transition">Copiar</button>
+        <div id="progressContainer" class="hidden mb-8 animate-pulse">
+            <div class="flex justify-between text-[10px] mb-2 uppercase tracking-tighter font-bold">
+                <span id="fileNameDisplay" class="text-gray-500 truncate max-w-[200px]">archivo.ext</span>
+                <span id="percentText" class="neon-text">0%</span>
+            </div>
+            <div class="w-full bg-zinc-900 rounded-full h-1 overflow-hidden">
+                <div id="progressBar" class="progress-bar"></div>
+            </div>
+        </div>
+
+        <div class="space-y-3">
+            <div class="flex items-center justify-between px-1">
+                <label class="text-[10px] uppercase text-zinc-500 font-bold tracking-widest">Share Link</label>
+                <span id="copyStatus" class="text-[10px] text-[#39ff14] font-bold uppercase hidden">Copiado</span>
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="resultLink" readonly 
+                    class="input-glow w-full p-4 rounded-xl text-sm text-zinc-300 placeholder-zinc-700 font-mono" 
+                    placeholder="Esperando subida...">
+                <button onclick="copyLink()" 
+                    class="bg-[#39ff14] text-black font-black px-6 rounded-xl hover:bg-white transition-all duration-300 active:scale-90 text-xs tracking-tighter">
+                    COPY
+                </button>
+            </div>
         </div>
     </div>
 
-    <footer class="mt-auto py-6 text-gray-600 text-[10px] text-center">
-        Copyright © 2026 Yotsuba Upload. All right reserved.<br>
-        Powered by PixelCrew-Team.
+    <footer class="mt-auto py-10 text-zinc-800 text-[9px] text-center font-bold tracking-[0.4em] uppercase">
+        Copyright © 2026 Yotsuba Upload • Powered by PixelCrew-Team
     </footer>
 
     <script>
@@ -43,47 +73,79 @@
         const fileInput = document.getElementById('fileInput');
         const resultLink = document.getElementById('resultLink');
         const statusText = document.getElementById('statusText');
+        const progressBar = document.getElementById('progressBar');
+        const progressContainer = document.getElementById('progressContainer');
+        const copyStatus = document.getElementById('copyStatus');
 
         dropZone.onclick = () => fileInput.click();
+
+        ['dragenter', 'dragover'].forEach(n => {
+            dropZone.addEventListener(n, e => { e.preventDefault(); dropZone.classList.add('active'); });
+        });
+        ['dragleave', 'drop'].forEach(n => {
+            dropZone.addEventListener(n, e => { e.preventDefault(); dropZone.classList.remove('active'); });
+        });
+
+        dropZone.addEventListener('drop', e => {
+            const files = e.dataTransfer.files;
+            if(files.length) uploadFile(files[0]);
+        });
 
         fileInput.onchange = e => uploadFile(e.target.files[0]);
 
         async function uploadFile(file) {
             if (!file) return;
-            statusText.innerText = "Verificando seguridad...";
+            
+            progressContainer.classList.remove('hidden');
+            document.getElementById('fileNameDisplay').innerText = file.name;
+            statusText.innerText = "Validando...";
 
-            // 2. Ejecutar reCAPTCHA para obtener el token
             grecaptcha.ready(function() {
                 grecaptcha.execute('6Lcgg7osAAAAAJkbj41nuqiUoc3h_fA9wZL_IDvm', {action: 'upload'}).then(async function(token) {
                     
-                    statusText.innerText = "Subiendo...";
-
                     const formData = new FormData();
                     formData.append('file', file);
-                    // 3. Enviar el token al servidor para validación
                     formData.append('recaptcha_token', token);
 
-                    try {
-                        const res = await fetch('/upload', { method: 'POST', body: formData });
-                        const data = await res.json();
-                        if (data.url) {
-                            const fullUrl = window.location.origin + data.url;
-                            resultLink.value = fullUrl;
-                            statusText.innerText = "¡Subida completada!";
-                        } else {
-                            statusText.innerText = "Error en validación";
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/upload', true);
+
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            const percent = Math.round((e.loaded / e.total) * 100);
+                            progressBar.style.width = percent + '%';
+                            document.getElementById('percentText').innerText = percent + '%';
+                            statusText.innerText = "Transfiriendo...";
                         }
-                    } catch (err) {
-                        statusText.innerText = "Error al subir";
-                    }
+                    };
+
+                    xhr.onload = function() {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            if (xhr.status === 200 && data.url) {
+                                resultLink.value = window.location.origin + data.url;
+                                statusText.innerText = "Subida Exitosa";
+                                progressBar.style.boxShadow = "0 0 20px #39ff14";
+                            } else {
+                                statusText.innerText = "Error: " + (data.error || "Fallo");
+                                progressBar.style.background = "#ff3131";
+                            }
+                        } catch(e) {
+                            statusText.innerText = "Error del servidor";
+                        }
+                    };
+
+                    xhr.send(formData);
                 });
             });
         }
 
         function copyLink() {
+            if(!resultLink.value) return;
             resultLink.select();
             document.execCommand('copy');
-            alert('Enlace copiado al portapapeles');
+            copyStatus.classList.remove('hidden');
+            setTimeout(() => copyStatus.classList.add('hidden'), 2000);
         }
     </script>
 </body>
