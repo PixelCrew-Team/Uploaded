@@ -1,4 +1,3 @@
-/* YOTSUBA UPLOADED - ENGINE */
 import 'dotenv/config';
 import Fastify from 'fastify';
 import multipart from '@fastify/multipart';
@@ -11,7 +10,6 @@ import pg from 'pg';
 const fastify = Fastify({ logger: false });
 const { Pool } = pg;
 
-// Conexión a la DB usando variables de entorno
 const pool = new Pool({
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
@@ -20,32 +18,41 @@ const pool = new Pool({
     port: process.env.DB_PORT,
 });
 
-// Configuración de subida (Límite 100MB)
 fastify.register(multipart, { 
-    limits: { fileSize: 100 * 1024 * 1024 } 
+    limits: { fileSize: 200 * 1024 * 1024 } 
 });
 
-// Servir Frontend
 fastify.register(staticFiles, {
     root: path.join(process.cwd(), 'public'),
     prefix: '/',
 });
 
-// Servir Archivos Subidos
 fastify.register(staticFiles, {
     root: path.join(process.cwd(), 'uploads'),
     prefix: '/u/',
-    decorateReply: false
+    decorateReply: false,
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.apk')) res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    }
 });
 
-// Ruta de Subida
+fastify.setNotFoundHandler((request, reply) => {
+    reply.sendFile('404.html');
+});
+
 fastify.post('/upload', async (req, reply) => {
     try {
         const data = await req.file();
         if (!data) return reply.code(400).send({ error: 'No hay archivo' });
 
+        const allowedExts = ['.apk', '.mp3', '.mp4', '.png', '.jpg', '.jpeg', '.gif'];
+        const ext = path.extname(data.filename).toLowerCase();
+        
+        if (!allowedExts.includes(ext)) {
+            return reply.code(400).send({ error: 'Extensión no permitida' });
+        }
+
         const id = nanoid(8); 
-        const ext = path.extname(data.filename);
         const fileName = `${id}${ext}`;
         const uploadPath = path.join(process.cwd(), 'uploads', fileName);
 
@@ -79,7 +86,7 @@ const start = async () => {
             );
         `);
         await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
-        console.log(`🚀 Yotsuba Uploaded activo en puerto ${process.env.PORT || 3000}`);
+        console.log(`🚀 Yotsuba Uploaded activo`);
     } catch (err) {
         process.exit(1);
     }
