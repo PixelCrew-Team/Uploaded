@@ -1,3 +1,4 @@
+/* YOTSUBA UPLOADED - ENGINE */
 import 'dotenv/config';
 import Fastify from 'fastify';
 import multipart from '@fastify/multipart';
@@ -7,8 +8,15 @@ import fs from 'fs';
 import { nanoid } from 'nanoid';
 import pg from 'pg';
 
+console.log('>>> [SISTEMA] Iniciando configuración...');
+
 const fastify = Fastify({ logger: false });
 const { Pool } = pg;
+
+// Validar que el .env cargó
+if (!process.env.DB_USER) {
+    console.error('>>> [ERROR] No se detectaron las variables del archivo .env');
+}
 
 const pool = new Pool({
     user: process.env.DB_USER,
@@ -76,7 +84,9 @@ fastify.post('/upload', async (req, reply) => {
 
 const start = async () => {
     try {
+        console.log('>>> [DB] Verificando conexión...');
         if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
+        
         await pool.query(`
             CREATE TABLE IF NOT EXISTS files (
                 id TEXT PRIMARY KEY, 
@@ -85,10 +95,15 @@ const start = async () => {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
-        console.log(`🚀 Yotsuba Uploaded activo`);
+        console.log('>>> [DB] Tabla verificada/creada.');
+
+        const port = process.env.PORT || 3000;
+        await fastify.listen({ port: port, host: '0.0.0.0' });
+        console.log(`🚀 [YOTSUBA] Online en puerto ${port}`);
     } catch (err) {
+        console.error('>>> [CRITICAL ERROR]:', err);
         process.exit(1);
     }
 };
+
 start();
