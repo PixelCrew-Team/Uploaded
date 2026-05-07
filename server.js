@@ -116,13 +116,10 @@ fastify.get('/d/:slug', async (req, reply) => {
     try {
         const { slug } = req.params;
         const result = await pool.query('SELECT target_url FROM urls WHERE slug = $1 AND type = $2', [slug.toLowerCase(), 'deceiver']);
-        
         if (result.rows.length === 0) return reply.sendFile('404.html');
-        
         const target = result.rows[0].target_url;
         const response = await fetch(target);
         const body = await response.text();
-        
         reply.type('text/html').send(body);
     } catch (err) {
         return reply.code(500).send('Error al conectar con el sitio remoto');
