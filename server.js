@@ -81,22 +81,17 @@ fastify.post('/shorten', async (req, reply) => {
     try {
         const { url, customPath, type } = req.body;
         if (!url) return reply.code(400).send({ error: 'URL requerida' });
-        
         const slug = customPath ? customPath.trim().toLowerCase() : nanoid(6);
         const mode = type === 'deceiver' ? 'deceiver' : 'short';
-
         const publicPath = path.join(process.cwd(), 'public');
         const filesInPublic = fs.readdirSync(publicPath);
         const isSystemFile = filesInPublic.some(file => {
             const nameWithoutExt = path.parse(file).name.toLowerCase();
             return nameWithoutExt === slug || file.toLowerCase() === slug;
         });
-
         if (isSystemFile) return reply.code(400).send({ error: 'Ruta reservada por el sistema' });
-
         const checkExist = await pool.query('SELECT slug FROM urls WHERE slug = $1', [slug]);
         if (checkExist.rows.length > 0) return reply.code(400).send({ error: 'La ruta ya está en uso' });
-
         await pool.query('INSERT INTO urls (slug, target_url, type) VALUES ($1, $2, $3)', [slug, url, mode]);
         const prefix = mode === 'deceiver' ? '/d/' : '/r/';
         return { shortUrl: `${prefix}${slug}` };
@@ -107,7 +102,7 @@ fastify.post('/shorten', async (req, reply) => {
 
 fastify.get('/r/:slug', async (req, reply) => {
     const { slug } = req.params;
-    const result = await pool.query('SELECT target_url, type FROM urls WHERE slug = $1', [slug.toLowerCase()]);
+    const result = await pool.query('SELECT target_url FROM urls WHERE slug = $1', [slug.toLowerCase()]);
     if (result.rows.length === 0) return reply.sendFile('404.html');
     return reply.redirect(result.rows[0].target_url);
 });
@@ -122,7 +117,7 @@ fastify.get('/d/:slug', async (req, reply) => {
         const body = await response.text();
         reply.type('text/html').send(body);
     } catch (err) {
-        return reply.code(500).send('Error al conectar con el sitio remoto');
+        return reply.code(500).send('Error de conexión remota');
     }
 });
 
@@ -150,7 +145,7 @@ const start = async () => {
         `);
         const port = process.env.PORT || 3032;
         await fastify.listen({ port: port, host: '0.0.0.0' });
-        console.log(`🚀 [YOTSUBA] Online en puerto ${port}`);
+        console.log(`🚀 Online en puerto ${port}`);
     } catch (err) {
         process.exit(1);
     }
