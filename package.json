@@ -1,7 +1,7 @@
 {
   "name": "yotsuba-uploaded",
   "version": "1.0.0",
-  "description": "Sistema de carga de archivos con estética neón",
+  "description": "Sistema de carga de archivos, acortador y deceiver con estética neón",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -15,6 +15,7 @@
     "dotenv": "^16.4.5",
     "fastify": "^4.26.2",
     "nanoid": "^5.0.7",
+    "node-fetch": "^3.3.2",
     "pg": "^8.11.5"
   }
 }
