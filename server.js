@@ -63,19 +63,35 @@ fastify.post('/shorten', async (req, reply) => {
     try {
         const { url, customPath } = req.body;
         if (!url) return reply.code(400).send({ error: 'URL requerida' });
-        const slug = customPath || nanoid(6);
-        const check = await pool.query('SELECT id FROM urls WHERE slug = $1', [slug]);
-        if (check.rows.length > 0) return reply.code(400).send({ error: 'La ruta ya existe' });
+        
+        const slug = customPath ? customPath.trim().toLowerCase() : nanoid(6);
+        
+        const publicPath = path.join(process.cwd(), 'public');
+        const filesInPublic = fs.readdirSync(publicPath);
+        const isSystemFile = filesInPublic.some(file => {
+            const nameWithoutExt = path.parse(file).name.toLowerCase();
+            return nameWithoutExt === slug || file.toLowerCase() === slug;
+        });
+
+        if (isSystemFile) {
+            return reply.code(400).send({ error: 'Ruta reservada por el sistema' });
+        }
+
+        const checkExist = await pool.query('SELECT slug FROM urls WHERE slug = $1', [slug]);
+        if (checkExist.rows.length > 0) {
+            return reply.code(400).send({ error: 'La ruta ya está en uso' });
+        }
+
         await pool.query('INSERT INTO urls (slug, target_url) VALUES ($1, $2)', [slug, url]);
         return { shortUrl: `/r/${slug}` };
     } catch (err) {
-        return reply.code(500).send({ error: 'Error al crear enlace' });
+        return reply.code(500).send({ error: 'Error interno' });
     }
 });
 
 fastify.get('/r/:slug', async (req, reply) => {
     const { slug } = req.params;
-    const result = await pool.query('SELECT target_url FROM urls WHERE slug = $1', [slug]);
+    const result = await pool.query('SELECT target_url FROM urls WHERE slug = $1', [slug.toLowerCase()]);
     if (result.rows.length === 0) return reply.sendFile('404.html');
     return reply.redirect(result.rows[0].target_url);
 });
