@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { nanoid } from 'nanoid';
 import pg from 'pg';
+import fetch from 'node-fetch';
 
 const fastify = Fastify({ logger: false });
 const { Pool } = pg;
@@ -39,7 +40,7 @@ fastify.register(staticFiles, {
 
 fastify.addHook('onRequest', async (request, reply) => {
     const url = request.raw.url;
-    if (url.endsWith('.html')) {
+    if (url.endsWith('.html') && !url.startsWith('/u/')) {
         const cleanPath = url.replace(/\.html$/, '');
         return reply.redirect(301, cleanPath);
     }
@@ -47,6 +48,10 @@ fastify.addHook('onRequest', async (request, reply) => {
 
 fastify.get('/url', async (request, reply) => {
     return reply.sendFile('url.html');
+});
+
+fastify.get('/deceiver', async (request, reply) => {
+    return reply.sendFile('deceiver.html');
 });
 
 fastify.post('/upload', async (req, reply) => {
@@ -74,11 +79,12 @@ fastify.post('/upload', async (req, reply) => {
 
 fastify.post('/shorten', async (req, reply) => {
     try {
-        const { url, customPath } = req.body;
+        const { url, customPath, type } = req.body;
         if (!url) return reply.code(400).send({ error: 'URL requerida' });
         
         const slug = customPath ? customPath.trim().toLowerCase() : nanoid(6);
-        
+        const mode = type === 'deceiver' ? 'deceiver' : 'short';
+
         const publicPath = path.join(process.cwd(), 'public');
         const filesInPublic = fs.readdirSync(publicPath);
         const isSystemFile = filesInPublic.some(file => {
@@ -86,17 +92,14 @@ fastify.post('/shorten', async (req, reply) => {
             return nameWithoutExt === slug || file.toLowerCase() === slug;
         });
 
-        if (isSystemFile) {
-            return reply.code(400).send({ error: 'Ruta reservada por el sistema' });
-        }
+        if (isSystemFile) return reply.code(400).send({ error: 'Ruta reservada por el sistema' });
 
         const checkExist = await pool.query('SELECT slug FROM urls WHERE slug = $1', [slug]);
-        if (checkExist.rows.length > 0) {
-            return reply.code(400).send({ error: 'La ruta ya está en uso' });
-        }
+        if (checkExist.rows.length > 0) return reply.code(400).send({ error: 'La ruta ya está en uso' });
 
-        await pool.query('INSERT INTO urls (slug, target_url) VALUES ($1, $2)', [slug, url]);
-        return { shortUrl: `/r/${slug}` };
+        await pool.query('INSERT INTO urls (slug, target_url, type) VALUES ($1, $2, $3)', [slug, url, mode]);
+        const prefix = mode === 'deceiver' ? '/d/' : '/r/';
+        return { shortUrl: `${prefix}${slug}` };
     } catch (err) {
         return reply.code(500).send({ error: 'Error interno' });
     }
@@ -104,9 +107,26 @@ fastify.post('/shorten', async (req, reply) => {
 
 fastify.get('/r/:slug', async (req, reply) => {
     const { slug } = req.params;
-    const result = await pool.query('SELECT target_url FROM urls WHERE slug = $1', [slug.toLowerCase()]);
+    const result = await pool.query('SELECT target_url, type FROM urls WHERE slug = $1', [slug.toLowerCase()]);
     if (result.rows.length === 0) return reply.sendFile('404.html');
     return reply.redirect(result.rows[0].target_url);
+});
+
+fastify.get('/d/:slug', async (req, reply) => {
+    try {
+        const { slug } = req.params;
+        const result = await pool.query('SELECT target_url FROM urls WHERE slug = $1 AND type = $2', [slug.toLowerCase(), 'deceiver']);
+        
+        if (result.rows.length === 0) return reply.sendFile('404.html');
+        
+        const target = result.rows[0].target_url;
+        const response = await fetch(target);
+        const body = await response.text();
+        
+        reply.type('text/html').send(body);
+    } catch (err) {
+        return reply.code(500).send('Error al conectar con el sitio remoto');
+    }
 });
 
 fastify.setNotFoundHandler((request, reply) => {
@@ -127,6 +147,7 @@ const start = async () => {
                 id SERIAL PRIMARY KEY,
                 slug TEXT UNIQUE,
                 target_url TEXT,
+                type TEXT DEFAULT 'short',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
