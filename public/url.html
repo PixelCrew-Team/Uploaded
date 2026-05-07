@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yotsuba Shortener</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0d0d0d; color: #e0e0e0; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .neon-text { color: #39ff14; text-shadow: 0 0 10px rgba(57, 255, 20, 0.5); }
+        .input-glow { background: #161616; border: 1px solid #222; transition: 0.3s; }
+        .input-glow:focus { border-color: #39ff14; outline: none; box-shadow: 0 0 10px rgba(57, 255, 20, 0.2); }
+        .btn-neon { background: #39ff14; color: black; font-weight: 900; transition: 0.3s; }
+        .btn-neon:hover { background: white; transform: translateY(-2px); }
+        .btn-neon:active { scale: 0.95; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen items-center justify-center p-6">
+
+    <div class="w-full max-w-lg">
+        <header class="text-center mb-10">
+            <h1 class="text-5xl font-black neon-text tracking-tighter mb-2 italic">YOTSUBA</h1>
+            <p class="text-gray-500 text-[10px] uppercase tracking-[0.3em] font-bold">Link Shortener & Redirector</p>
+        </header>
+
+        <div class="space-y-6 bg-[#111] p-8 rounded-2xl border border-zinc-900">
+            <div>
+                <label class="text-[10px] uppercase text-zinc-500 font-bold tracking-widest mb-2 block">Enlace Real (Destino)</label>
+                <input type="text" id="targetUrl" 
+                    class="input-glow w-full p-4 rounded-xl text-sm text-zinc-300 placeholder-zinc-700 font-mono" 
+                    placeholder="https://ejemplo.com/archivo-muy-largo">
+            </div>
+
+            <div>
+                <label class="text-[10px] uppercase text-zinc-500 font-bold tracking-widest mb-2 block">Ruta Personalizada (Opcional)</label>
+                <div class="flex items-center gap-2">
+                    <span class="text-zinc-600 font-mono text-sm">/r/</span>
+                    <input type="text" id="customPath" 
+                        class="input-glow w-full p-4 rounded-xl text-sm text-zinc-300 placeholder-zinc-700 font-mono" 
+                        placeholder="mi-enlace">
+                </div>
+                <p id="errorText" class="text-[10px] text-red-500 font-bold uppercase mt-2 hidden">Esa ruta ya existe o no es válida</p>
+            </div>
+
+            <button onclick="shortenUrl()" class="btn-neon w-full p-4 rounded-xl text-xs tracking-tighter uppercase">
+                Generar Enlace Corto
+            </button>
+        </div>
+
+        <div id="resultContainer" class="mt-8 space-y-3 hidden">
+            <div class="flex items-center justify-between px-1">
+                <label class="text-[10px] uppercase text-[#39ff14] font-bold tracking-widest">Tu Enlace Acortado</label>
+                <span id="copyStatus" class="text-[10px] text-white font-bold uppercase hidden">Copiado</span>
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="resultLink" readonly 
+                    class="input-glow w-full p-4 rounded-xl text-sm text-[#39ff14] font-mono border-[#39ff14]/30">
+                <button onclick="copyLink()" 
+                    class="bg-white text-black font-black px-6 rounded-xl hover:bg-[#39ff14] transition-all duration-300 text-xs tracking-tighter">
+                    COPY
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-auto py-10 text-zinc-800 text-[9px] text-center font-bold tracking-[0.4em] uppercase">
+        Copyright © 2026 Yotsuba Upload • Powered by PixelCrew-Team
+    </footer>
+
+    <script>
+        async function shortenUrl() {
+            const url = document.getElementById('targetUrl').value;
+            const customPath = document.getElementById('customPath').value;
+            const errorText = document.getElementById('errorText');
+            const resultContainer = document.getElementById('resultContainer');
+            const resultLink = document.getElementById('resultLink');
+
+            if(!url) return alert("Pon una URL");
+
+            errorText.classList.add('hidden');
+
+            const res = await fetch('/shorten', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, customPath })
+            });
+
+            const data = await res.json();
+
+            if (res.status === 200) {
+                resultContainer.classList.remove('hidden');
+                resultLink.value = window.location.origin + data.shortUrl;
+                resultLink.classList.add('animate-pulse');
+                setTimeout(() => resultLink.classList.remove('animate-pulse'), 1000);
+            } else {
+                errorText.innerText = data.error || "Error al crear";
+                errorText.classList.remove('hidden');
+                resultContainer.classList.add('hidden');
+            }
+        }
+
+        function copyLink() {
+            const link = document.getElementById('resultLink');
+            link.select();
+            document.execCommand('copy');
+            const status = document.getElementById('copyStatus');
+            status.classList.remove('hidden');
+            setTimeout(() => status.classList.add('hidden'), 2000);
+        }
+    </script>
+</body>
+</html>
