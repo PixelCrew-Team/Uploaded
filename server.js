@@ -25,6 +25,7 @@ fastify.register(multipart, {
 fastify.register(staticFiles, {
     root: path.join(process.cwd(), 'public'),
     prefix: '/',
+    wildcard: false
 });
 
 fastify.register(staticFiles, {
@@ -34,6 +35,18 @@ fastify.register(staticFiles, {
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('.apk')) res.setHeader('Content-Type', 'application/vnd.android.package-archive');
     }
+});
+
+fastify.addHook('onRequest', async (request, reply) => {
+    const url = request.raw.url;
+    if (url.endsWith('.html')) {
+        const cleanPath = url.replace(/\.html$/, '');
+        return reply.redirect(301, cleanPath);
+    }
+});
+
+fastify.get('/url', async (request, reply) => {
+    return reply.sendFile('url.html');
 });
 
 fastify.post('/upload', async (req, reply) => {
