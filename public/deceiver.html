@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yotsuba Deceiver</title>
+    <title>Yotsuba Deceiver • Stealth Mode</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0d0d0d; color: #e0e0e0; font-family: 'Inter', sans-serif; overflow-x: hidden; }
@@ -12,6 +12,7 @@
         .input-glow:focus { border-color: #39ff14; outline: none; box-shadow: 0 0 10px rgba(57, 255, 20, 0.2); }
         .btn-neon { background: #39ff14; color: black; font-weight: 900; transition: 0.3s; cursor: pointer; }
         .btn-neon:hover { background: white; transform: translateY(-2px); }
+        select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2339ff14'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; background-size: 1rem; }
     </style>
 </head>
 <body class="flex flex-col min-h-screen items-center justify-center p-6">
@@ -24,22 +25,33 @@
 
         <div class="space-y-6 bg-[#111] p-8 rounded-2xl border border-zinc-900">
             <div>
-                <label class="text-[10px] uppercase text-zinc-500 font-bold tracking-widest mb-2 block">Web a Infiltrar (URL Completa)</label>
+                <label class="text-[10px] uppercase text-zinc-500 font-bold tracking-widest mb-2 block">Web a Infiltrar</label>
                 <input type="text" id="targetUrl" 
                     class="input-glow w-full p-4 rounded-xl text-sm text-zinc-300 placeholder-zinc-700 font-mono" 
-                    placeholder="https://rest.kazuma.giize.com">
+                    placeholder="https://ejemplo.com">
             </div>
 
-            <div>
-                <label class="text-[10px] uppercase text-zinc-500 font-bold tracking-widest mb-2 block">Ruta Camuflada</label>
-                <div class="flex items-center gap-2">
-                    <span class="text-zinc-600 font-mono text-sm">/d/</span>
-                    <input type="text" id="customPath" 
-                        class="input-glow w-full p-4 rounded-xl text-sm text-zinc-300 placeholder-zinc-700 font-mono" 
-                        placeholder="KazumaApi">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-[10px] uppercase text-zinc-500 font-bold tracking-widest mb-2 block">Ruta Camuflada</label>
+                    <div class="flex items-center gap-2">
+                        <span class="text-zinc-600 font-mono text-xs">/d/</span>
+                        <input type="text" id="customPath" 
+                            class="input-glow w-full p-4 rounded-xl text-sm text-zinc-300 placeholder-zinc-700 font-mono" 
+                            placeholder="ruta">
+                    </div>
                 </div>
-                <p id="errorText" class="text-[10px] text-red-500 font-bold uppercase mt-2 hidden"></p>
+                <div>
+                    <label class="text-[10px] uppercase text-zinc-500 font-bold tracking-widest mb-2 block">Dispositivo Forzado</label>
+                    <select id="deviceMode" class="input-glow w-full p-4 rounded-xl text-sm text-zinc-300 cursor-pointer">
+                        <option value="desktop">Computadora</option>
+                        <option value="tablet">Tableta</option>
+                        <option value="mobile">Teléfono</option>
+                    </select>
+                </div>
             </div>
+
+            <p id="errorText" class="text-[10px] text-red-500 font-bold uppercase mt-2 hidden"></p>
 
             <button onclick="createDeceiver()" class="btn-neon w-full p-4 rounded-xl text-xs tracking-tighter uppercase">
                 Activar Deceiver
@@ -48,7 +60,7 @@
 
         <div id="resultContainer" class="mt-8 space-y-3 hidden">
             <div class="flex items-center justify-between px-1">
-                <label class="text-[10px] uppercase text-[#39ff14] font-bold tracking-widest">Enlace Generado</label>
+                <label class="text-[10px] uppercase text-[#39ff14] font-bold tracking-widest">Enlace Camuflado Listo</label>
             </div>
             <div class="flex gap-2">
                 <input type="text" id="resultLink" readonly 
@@ -68,26 +80,42 @@
         async function createDeceiver() {
             const url = document.getElementById('targetUrl').value;
             const customPath = document.getElementById('customPath').value;
+            const device = document.getElementById('deviceMode').value;
             const errorText = document.getElementById('errorText');
             const resultContainer = document.getElementById('resultContainer');
             const resultLink = document.getElementById('resultLink');
 
-            if(!url) return alert("Ingresa una URL");
+            if(!url) {
+                errorText.innerText = "Ingresa una URL de destino";
+                errorText.classList.remove('hidden');
+                return;
+            }
+
             errorText.classList.add('hidden');
 
-            const res = await fetch('/shorten', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url, customPath, type: 'deceiver' })
-            });
+            try {
+                const res = await fetch('/shorten', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        url, 
+                        customPath, 
+                        type: 'deceiver',
+                        device: device 
+                    })
+                });
 
-            const data = await res.json();
+                const data = await res.json();
 
-            if (res.status === 200) {
-                resultContainer.classList.remove('hidden');
-                resultLink.value = window.location.origin + data.shortUrl;
-            } else {
-                errorText.innerText = data.error || "Error";
+                if (res.status === 200) {
+                    resultContainer.classList.remove('hidden');
+                    resultLink.value = window.location.origin + data.shortUrl;
+                } else {
+                    errorText.innerText = data.error || "Error al crear";
+                    errorText.classList.remove('hidden');
+                }
+            } catch (e) {
+                errorText.innerText = "Error de conexión";
                 errorText.classList.remove('hidden');
             }
         }
@@ -96,7 +124,7 @@
             const link = document.getElementById('resultLink');
             link.select();
             document.execCommand('copy');
-            alert("Copiado!");
+            alert("Copiado al portapapeles");
         }
     </script>
 </body>
