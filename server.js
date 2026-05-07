@@ -1,4 +1,3 @@
-/* YOTSUBA UPLOADED - ENGINE */
 import 'dotenv/config';
 import Fastify from 'fastify';
 import multipart from '@fastify/multipart';
@@ -8,15 +7,8 @@ import fs from 'fs';
 import { nanoid } from 'nanoid';
 import pg from 'pg';
 
-console.log('>>> [SISTEMA] Iniciando configuración...');
-
 const fastify = Fastify({ logger: false });
 const { Pool } = pg;
-
-// Validar que el .env cargó
-if (!process.env.DB_USER) {
-    console.error('>>> [ERROR] No se detectaron las variables del archivo .env');
-}
 
 const pool = new Pool({
     user: process.env.DB_USER,
@@ -44,49 +36,57 @@ fastify.register(staticFiles, {
     }
 });
 
-fastify.setNotFoundHandler((request, reply) => {
-    reply.sendFile('404.html');
-});
-
 fastify.post('/upload', async (req, reply) => {
     try {
         const data = await req.file();
         if (!data) return reply.code(400).send({ error: 'No hay archivo' });
-
         const allowedExts = ['.apk', '.mp3', '.mp4', '.png', '.jpg', '.jpeg', '.gif'];
         const ext = path.extname(data.filename).toLowerCase();
-        
-        if (!allowedExts.includes(ext)) {
-            return reply.code(400).send({ error: 'Extensión no permitida' });
-        }
-
+        if (!allowedExts.includes(ext)) return reply.code(400).send({ error: 'Extensión no permitida' });
         const id = nanoid(8); 
         const fileName = `${id}${ext}`;
         const uploadPath = path.join(process.cwd(), 'uploads', fileName);
-
         const fileStream = fs.createWriteStream(uploadPath);
         await new Promise((resolve, reject) => {
             data.file.pipe(fileStream);
             data.file.on('end', resolve);
             fileStream.on('error', reject);
         });
-
-        await pool.query(
-            'INSERT INTO files (id, original_name, filename) VALUES ($1, $2, $3)', 
-            [id, data.filename, fileName]
-        );
-
+        await pool.query('INSERT INTO files (id, original_name, filename) VALUES ($1, $2, $3)', [id, data.filename, fileName]);
         return { url: `/u/${fileName}` };
     } catch (err) {
         return reply.code(500).send({ error: 'Fallo en la subida' });
     }
 });
 
+fastify.post('/shorten', async (req, reply) => {
+    try {
+        const { url, customPath } = req.body;
+        if (!url) return reply.code(400).send({ error: 'URL requerida' });
+        const slug = customPath || nanoid(6);
+        const check = await pool.query('SELECT id FROM urls WHERE slug = $1', [slug]);
+        if (check.rows.length > 0) return reply.code(400).send({ error: 'La ruta ya existe' });
+        await pool.query('INSERT INTO urls (slug, target_url) VALUES ($1, $2)', [slug, url]);
+        return { shortUrl: `/r/${slug}` };
+    } catch (err) {
+        return reply.code(500).send({ error: 'Error al crear enlace' });
+    }
+});
+
+fastify.get('/r/:slug', async (req, reply) => {
+    const { slug } = req.params;
+    const result = await pool.query('SELECT target_url FROM urls WHERE slug = $1', [slug]);
+    if (result.rows.length === 0) return reply.sendFile('404.html');
+    return reply.redirect(result.rows[0].target_url);
+});
+
+fastify.setNotFoundHandler((request, reply) => {
+    reply.sendFile('404.html');
+});
+
 const start = async () => {
     try {
-        console.log('>>> [DB] Verificando conexión...');
         if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
-        
         await pool.query(`
             CREATE TABLE IF NOT EXISTS files (
                 id TEXT PRIMARY KEY, 
@@ -94,14 +94,17 @@ const start = async () => {
                 filename TEXT, 
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS urls (
+                id SERIAL PRIMARY KEY,
+                slug TEXT UNIQUE,
+                target_url TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         `);
-        console.log('>>> [DB] Tabla verificada/creada.');
-
-        const port = process.env.PORT || 3000;
+        const port = process.env.PORT || 3032;
         await fastify.listen({ port: port, host: '0.0.0.0' });
         console.log(`🚀 [YOTSUBA] Online en puerto ${port}`);
     } catch (err) {
-        console.error('>>> [CRITICAL ERROR]:', err);
         process.exit(1);
     }
 };
